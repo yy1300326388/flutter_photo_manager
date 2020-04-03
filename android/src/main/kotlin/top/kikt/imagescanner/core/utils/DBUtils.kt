@@ -536,7 +536,12 @@ object DBUtils : IDBUtils {
     
     return getAssetEntity(context, insertedId)
   }
-  
+
+  override fun refreshIncompleteInfoAssets(context: Context): Boolean {
+    /// Because the width, height, and duration columns have readonly properties, they can only be generated during insert. Subsequent updates are not possible and this method is deprecated.
+    return false
+  }
+
   override fun moveToGallery(context: Context, assetId: String, galleryId: String): AssetEntity? {
     
     val (currentGalleryId, _) = getSomeInfo(context, assetId)

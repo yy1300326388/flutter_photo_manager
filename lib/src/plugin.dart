@@ -318,10 +318,6 @@ class Plugin with BasePlugin, IosPlugin, AndroidPlugin {
       "favorite": favorite,
     });
   }
-
-  Future<bool> androidRemoveNoExistsAssets() {
-    return _channel.invokeMethod("removeNoExistsAssets");
-  }
 }
 
 mixin BasePlugin {
@@ -419,5 +415,13 @@ mixin AndroidPlugin on BasePlugin {
     print(result);
 
     return true;
+  }
+
+  Future<bool> androidRemoveNoExistsAssets() {
+    return _channel.invokeMethod("removeNoExistsAssets");
+  }
+
+  Future<bool> androidRefreshIncompleteInfoAssets() {
+    return _channel.invokeMethod("refreshIncompleteInfoAssets");
   }
 }

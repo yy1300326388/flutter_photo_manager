@@ -7,7 +7,7 @@ import 'package:photo_manager/photo_manager.dart';
 
 import 'dev_title_page.dart';
 import 'ios/create_folder_example.dart';
-import 'remove_all_android_not_exists_example.dart';
+import 'some_android_example_page.dart';
 
 class DeveloperIndexPage extends StatefulWidget {
   @override
@@ -28,8 +28,8 @@ class _DeveloperIndexPageState extends State<DeveloperIndexPage> {
             onPressed: () => navToWidget(CreateFolderExample()),
           ),
           RaisedButton(
-            child: Text("Show Android remove not exists asset example."),
-            onPressed: () => navToWidget(RemoveAndroidNotExistsExample()),
+            child: Text("Some only android editor example."),
+            onPressed: () => navToWidget(AndroidDevelopingExample()),
           ),
           RaisedButton(
             child: Text("upload file to local to test EXIF."),

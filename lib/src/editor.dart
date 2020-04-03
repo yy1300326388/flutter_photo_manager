@@ -174,6 +174,7 @@ class IosEditor {
 }
 
 class AndroidEditor {
+  /// The result indicates whether the move was successful or not.
   Future<bool> moveAssetToAnother({
     AssetEntity entity,
     AssetPathEntity target,
@@ -189,11 +190,25 @@ class AndroidEditor {
     return _plugin.androidMoveAssetToPath(entity, target);
   }
 
+  /// It's a very resource-intensive operation.
+  ///
+  /// If false is returned, it means that a thread is already scanning.
   Future<bool> removeAllNoExistsAsset() async {
     assert(Platform.isAndroid);
     if (!Platform.isAndroid) {
       return false;
     }
     return _plugin.androidRemoveNoExistsAssets();
+  }
+
+  /// Don't use. Does not take effect.
+  ///
+  /// Because the width, height, and duration columns have readonly properties, they can only be generated during insert.
+  Future<bool> refreshIncompleteInfoAssets() async {
+    assert(Platform.isAndroid);
+    if (!Platform.isAndroid) {
+      return false;
+    }
+    return _plugin.androidRefreshIncompleteInfoAssets();
   }
 }

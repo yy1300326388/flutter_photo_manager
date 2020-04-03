@@ -352,6 +352,11 @@ class PhotoManagerPlugin(private val registrar: PluginRegistry.Registrar) : Meth
           photoManager.removeAllExistsAssets(resultHandler)
         }
       }
+      "refreshIncompleteInfoAssets"->{
+        runOnBackground {
+          photoManager.refreshIncompleteInfoAssets(resultHandler)
+        }
+      }
       else -> resultHandler.notImplemented()
     }
   }

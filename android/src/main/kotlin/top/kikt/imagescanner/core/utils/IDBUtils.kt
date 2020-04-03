@@ -375,4 +375,6 @@ interface IDBUtils {
   }
   
   fun removeAllExistsAssets(context: Context): Boolean
+
+  fun refreshIncompleteInfoAssets(context: Context): Boolean
 }
