@@ -293,6 +293,10 @@ class AssetEntity {
   /// nullable, if the manager is null.
   Size get size => Size(width.toDouble(), height.toDouble());
 
+  Future<int> fileSize() async {
+    return PhotoManager._assetFileSize(this);
+  }
+
   /// unix timestamp of asset, milliseconds
   int createDtSecond;
 
