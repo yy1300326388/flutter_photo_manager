@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../type.dart';
 
 /// Filter option for get asset.
@@ -6,7 +8,7 @@ import '../type.dart';
 ///
 /// See [FilterOption]
 class FilterOptionGroup {
-  /// A empty option
+  /// An empty option
   FilterOptionGroup.empty();
 
   FilterOptionGroup() {
@@ -19,8 +21,19 @@ class FilterOptionGroup {
 
   DateTimeCond dateTimeCond = DateTimeCond.def();
 
+  FilterOption getOption(AssetType type) {
+    return _map[type];
+  }
+
   void setOption(AssetType type, FilterOption option) {
     _map[type] = option;
+  }
+
+  void merge(FilterOptionGroup other) {
+    assert(other != null, 'Cannot merge null.');
+    for (final AssetType type in _map.keys) {
+      _map[type] = _map[type]?.merge(other.getOption(type));
+    }
   }
 
   Map<String, dynamic> toMap() {
@@ -39,12 +52,24 @@ class FilterOptionGroup {
 
     return result;
   }
+
+  @override
+  String toString() {
+    return const JsonEncoder.withIndent('  ').convert(toMap());
+  }
 }
 
 /// Filter option
 ///
 /// 筛选选项的详细情况
 class FilterOption {
+  /// See [needTitle], [sizeConstraint] and [durationConstraint]
+  const FilterOption({
+    this.needTitle = false,
+    this.sizeConstraint = const SizeConstraint(),
+    this.durationConstraint = const DurationConstraint(),
+  });
+
   /// This property affects performance on iOS. If not needed, please pass false, default is false.
   final bool needTitle;
 
@@ -54,12 +79,28 @@ class FilterOption {
   /// See [DurationConstraint], ignore in [AssetType.image].
   final DurationConstraint durationConstraint;
 
-  /// See [needTitle], [sizeConstraint] and [durationConstraint]
-  const FilterOption({
-    this.needTitle = false,
-    this.sizeConstraint = const SizeConstraint(),
-    this.durationConstraint = const DurationConstraint(),
-  });
+  /// Create a new [FilterOption] with specific properties merging.
+  FilterOption copyWith({
+    bool needTitle,
+    SizeConstraint sizeConstraint,
+    DurationConstraint durationConstraint,
+  }) {
+    return FilterOption(
+      needTitle: needTitle ?? this.needTitle,
+      sizeConstraint: sizeConstraint ?? this.sizeConstraint,
+      durationConstraint: durationConstraint ?? this.durationConstraint,
+    );
+  }
+
+  /// Merge a [FilterOption] into another.
+  FilterOption merge(FilterOption other) {
+    assert(other != null, 'Cannot merge null.');
+    return FilterOption(
+      needTitle: other.needTitle ?? this.needTitle,
+      sizeConstraint: other.sizeConstraint ?? this.sizeConstraint,
+      durationConstraint: other.durationConstraint ?? this.durationConstraint,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -67,6 +108,11 @@ class FilterOption {
       "size": sizeConstraint.toMap(),
       "duration": durationConstraint.toMap(),
     };
+  }
+
+  @override
+  String toString() {
+    return const JsonEncoder.withIndent('  ').convert(toMap());
   }
 }
 
