@@ -82,7 +82,11 @@ class _SaveMediaExampleState extends State<SaveMediaExample> {
             ),
             RaisedButton(
               child: Text("Save image with path"),
-              onPressed: saveImageWithPath,
+              onPressed: () => saveImageWithPath(),
+            ),
+            RaisedButton(
+              child: Text("Save image with cache path."),
+              onPressed: () => saveImageWithNoCachePath(),
             ),
             RaisedButton(
               child: Text("Save video"),
@@ -134,12 +138,15 @@ class _SaveMediaExampleState extends State<SaveMediaExample> {
     print(asset);
   }
 
-  void saveImageWithPath() async {
+  void saveImageWithPath([String filePath]) async {
+    if (filePath == null) {
+      filePath = await downloadPath();
+    }
     final client = HttpClient();
     final req = await client.getUrl(Uri.parse(imageUrl));
     final resp = await req.close();
 
-    File file = File(await downloadPath());
+    File file = File(filePath);
 
     resp.listen((data) {
       file.writeAsBytesSync(data, mode: FileMode.append);
@@ -149,5 +156,18 @@ class _SaveMediaExampleState extends State<SaveMediaExample> {
       print("saved asset: $asset");
       client.close();
     });
+  }
+
+  void saveImageWithNoCachePath() async {
+    String path;
+    if (Platform.isAndroid) {
+      path = (await getExternalCacheDirectories())[0].absolute.path;
+      final name = DateTime.now().microsecondsSinceEpoch ~/
+          Duration.microsecondsPerMillisecond;
+      path = '$path/$name.jpg';
+    } else {
+      path = await downloadPath();
+    }
+    saveImageWithPath(path);
   }
 }
