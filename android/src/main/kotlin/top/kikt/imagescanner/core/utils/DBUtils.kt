@@ -242,7 +242,13 @@ object DBUtils : IDBUtils {
     val lng = cursor.getDouble(MediaStore.Images.ImageColumns.LONGITUDE)
     val orientation: Int = cursor.getInt(MediaStore.MediaColumns.ORIENTATION)
 
-    val size: Long? = cursor.getLong(SIZE)
+    val size: Long? = File(path).let {
+      if (it.exists()) {
+        it.length()
+      } else {
+        null
+      }
+    }
 
     return AssetEntity(id, path, duration, date, width, height, getMediaType(type), displayName, modifiedDate, orientation, lat, lng, size = size)
   }
