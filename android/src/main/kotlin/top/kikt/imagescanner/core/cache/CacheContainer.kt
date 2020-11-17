@@ -1,22 +1,23 @@
 package top.kikt.imagescanner.core.cache
 
 import top.kikt.imagescanner.core.entity.AssetEntity
+import java.util.concurrent.ConcurrentHashMap
 
 class CacheContainer {
 
     // key is path
     // value is asset entity
-    private val assetMap = HashMap<String, AssetEntity>()
+    private val assetMap = ConcurrentHashMap<String, AssetEntity>()
 
-    fun putAsset(assetEntity: AssetEntity) {
+    @Synchronized fun putAsset(assetEntity: AssetEntity) {
         assetMap[assetEntity.id] = assetEntity
     }
 
-    fun getAsset(id: String): AssetEntity? {
+    @Synchronized fun getAsset(id: String): AssetEntity? {
         return assetMap[id]
     }
 
-    fun clearCache() {
+    @Synchronized fun  clearCache() {
         assetMap.clear()
     }
 }
