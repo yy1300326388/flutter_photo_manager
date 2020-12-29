@@ -28,7 +28,6 @@
   if (self) {
     __isAuth = NO;
     cacheContainer = [PMCacheContainer new];
-    cachingManager = [PHCachingImageManager new];
   }
 
   return self;
@@ -40,6 +39,9 @@
 
 - (void)setAuth:(BOOL)auth {
   __isAuth = auth;
+    if(__isAuth){
+        cachingManager = [PHCachingImageManager new];
+    }
 }
 
 - (NSArray<PMAssetPathEntity *> *)getGalleryList:(int)type hasAll:(BOOL)hasAll onlyAll:(BOOL)onlyAll option:(PMFilterOptionGroup *)option {
