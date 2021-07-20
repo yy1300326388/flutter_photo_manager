@@ -15,6 +15,7 @@
 @property(nonatomic, assign) NSUInteger assetCount;
 @property(nonatomic, assign) BOOL isAll;
 @property(nonatomic, assign) int type;
+@property(nonatomic, assign) long modifiedDate;
 
 - (instancetype)initWithId:(NSString *)id name:(NSString *)name assetCount:(NSUInteger)assetCount;
 
@@ -36,6 +37,7 @@
 @property(nonatomic, assign) double lng;
 @property(nonatomic, copy) NSString *title;
 @property(nonatomic, assign) BOOL favorite;
+@property(nonatomic, assign) BOOL isLocallyAvailable;
 
 - (instancetype)initWithId:(NSString *)id
                   createDt:(long)createDt

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_scanner_example/page/developer/create_entity_by_id.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -25,41 +26,49 @@ class _DeveloperIndexPageState extends State<DeveloperIndexPage> {
       ),
       body: ListView(
         children: <Widget>[
-          RaisedButton(
+          ElevatedButton(
             child: Text("Show iOS create folder example."),
             onPressed: () => navToWidget(CreateFolderExample()),
           ),
-          RaisedButton(
+          ElevatedButton(
             child: Text("Test edit image"),
             onPressed: () => navToWidget(EditAssetPage()),
           ),
-          RaisedButton(
+          ElevatedButton(
             child: Text("Show Android remove not exists asset example."),
             onPressed: () => navToWidget(RemoveAndroidNotExistsExample()),
           ),
-          RaisedButton(
+          ElevatedButton(
             child: Text("upload file to local to test EXIF."),
             onPressed: _upload,
           ),
-          RaisedButton(
+          ElevatedButton(
             child: Text("Save video to photos."),
             onPressed: _saveVideo,
           ),
-          RaisedButton(
+          ElevatedButton(
             child: Text("Open test title page"),
             onPressed: _navigatorSpeedOfTitle,
           ),
-          RaisedButton(
+          ElevatedButton(
             child: Text("Open setting."),
             onPressed: _openSetting,
           ),
-          RaisedButton(
+          ElevatedButton(
             child: Text("Create Entity ById"),
             onPressed: () => navToWidget(CreateEntityById()),
           ),
-          RaisedButton(
+          ElevatedButton(
             child: Text("Clear file caches"),
             onPressed: _clearFileCaches,
+          ),
+          ElevatedButton(
+            child: Text("Request permission extend"),
+            onPressed: _requestPermssionExtend,
+          ),
+          ElevatedButton(
+            child: Text("PresentLimited"),
+            onPressed: _persentLimited,
           ),
         ],
       ),
@@ -76,10 +85,13 @@ class _DeveloperIndexPageState extends State<DeveloperIndexPage> {
     // }
 
     final file = await asset.originFile;
+    if (file == null) {
+      return;
+    }
 
     print("file length = ${file.lengthSync()}");
 
-    http.BaseClient client = http.Client();
+    http.Client client = http.Client();
     final req = http.MultipartRequest(
       "post",
       Uri.parse("http://172.16.100.7:10001/upload/file"),
@@ -144,5 +156,37 @@ class _DeveloperIndexPageState extends State<DeveloperIndexPage> {
 
   void _clearFileCaches() {
     PhotoManager.clearFileCache();
+  }
+
+  void _requestPermssionExtend() async {
+    final state = await PhotoManager.requestPermissionExtend();
+    print('result --- state: $state');
+  }
+
+  var _isNotify = false;
+
+  Future<void> _persentLimited() async {
+    if (Platform.isIOS) {
+      if (!_isNotify) {
+        _isNotify = true;
+        PhotoManager.addChangeCallback(_callback);
+      }
+      PhotoManager.startChangeNotify();
+      await PhotoManager.presentLimited();
+    }
+  }
+
+  void _callback(MethodCall call) {
+    print('on change ${call.method} ${call.arguments}');
+    PhotoManager.removeChangeCallback(_callback);
+    _isNotify = false;
+  }
+
+  @override
+  void dispose() {
+    if (_isNotify) {
+      PhotoManager.removeChangeCallback(_callback);
+    }
+    super.dispose();
   }
 }

@@ -12,21 +12,21 @@ class _DevelopingExampleState extends State<DevelopingExample> {
     return Scaffold(
       appBar: AppBar(),
       body: Container(
-        child: RaisedButton(
+        child: ElevatedButton(
           child: Text("Test title speed"),
           onPressed: () async {
             final start = DateTime.now();
             int count = 1000;
-            var result = await PhotoManager.requestPermission();
-            if (result) {
+            var result = await PhotoManager.requestPermissionExtend();
+
+            if (result.isAuth) {
               List<AssetEntity> imageList = [];
               List<AssetPathEntity> list = await PhotoManager.getAssetPathList(
                 type: RequestType.image,
               );
-              if (list != null)
-                for (AssetPathEntity path in list)
-                  imageList.addAll(await path.getAssetListRange(
-                      start: 0, end: path.assetCount));
+              for (AssetPathEntity path in list)
+                imageList.addAll(await path.getAssetListRange(
+                    start: 0, end: path.assetCount));
 
               if (imageList.isNotEmpty) {
                 imageList.shuffle();

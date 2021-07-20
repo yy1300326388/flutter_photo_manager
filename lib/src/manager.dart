@@ -4,13 +4,44 @@ Plugin _plugin = Plugin();
 
 /// use the class method to help user load asset list and asset info.
 ///
-/// 这个类可以获取
+/// 这个类是整个库的核心类
 class PhotoManager {
   /// in android WRITE_EXTERNAL_STORAGE  READ_EXTERNAL_STORAGE
   ///
   /// in ios request the photo permission
+  ///
+  /// Use [requestPermissionExtend] to instead;
+  // @Deprecated("Use requestPermissionExtend")
   static Future<bool> requestPermission() async {
-    return _plugin.requestPermission();
+    return (await requestPermissionExtend()).isAuth;
+  }
+
+  /// Android: WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE, MEDIA_LOCATION
+  ///
+  /// iOS: NSPhotoLibraryUsageDescription of info.plist
+  ///
+  /// macOS of Release.entitlements:
+  ///  - com.apple.security.assets.movies.read-write
+  ///  - com.apple.security.assets.music.read-write
+  ///
+  /// Also see [PermissionState].
+  static Future<PermissionState> requestPermissionExtend({
+    PermisstionRequestOption requestOption = const PermisstionRequestOption(),
+  }) async {
+    final int resultIndex =
+        await _plugin.requestPermissionExtend(requestOption);
+    return PermissionState.values[resultIndex];
+  }
+
+  /// Prompts the user to update their limited library selection.
+  ///
+  /// This method just support iOS(14.0+).
+  ///
+  /// See document of [Apple doc][].
+  ///
+  /// [Apple doc]: https://developer.apple.com/documentation/photokit/phphotolibrary/3616113-presentlimitedlibrarypickerfromv/
+  static Future<void> presentLimited() async {
+    await _plugin.presentLimited();
   }
 
   static Editor editor = Editor();
@@ -28,10 +59,8 @@ class PhotoManager {
     bool hasAll = true,
     bool onlyAll = false,
     RequestType type = RequestType.common,
-    FilterOptionGroup filterOption,
+    FilterOptionGroup? filterOption,
   }) async {
-    assert(hasAll != null);
-    assert(onlyAll != null);
     if (onlyAll) {
       assert(hasAll, "If only is true, then the hasAll must be not null.");
     }
@@ -65,7 +94,6 @@ class PhotoManager {
   }
 
   static Future<void> setLog(bool isLog) {
-    assert(isLog != null);
     return _plugin.setLog(isLog);
   }
 
@@ -99,11 +127,10 @@ class PhotoManager {
   }
 
   static Future<List<AssetEntity>> _getAssetWithRange({
-    @required AssetPathEntity entity,
-    @required int start,
-    @required int end,
+    required AssetPathEntity entity,
+    required int start,
+    required int end,
   }) {
-    assert(entity != null && start != null && end != null);
     if (end > entity.assetCount) {
       end = entity.assetCount;
     }
@@ -155,15 +182,35 @@ class PhotoManager {
   static void removeChangeCallback(ValueChanged<MethodCall> callback) =>
       _notifyManager.removeCallback(callback);
 
-  /// see [_NotifyManager]
-  static void startChangeNotify() => _notifyManager.startHandleNotify();
+  /// Whether to monitor the change of photo album.
+  static bool notifyingOfChange = false;
+
+  /// See [_NotifyManager.notifyStream]
+  static Stream<bool> get notifyStream => _notifyManager.notifyStream;
 
   /// see [_NotifyManager]
-  static void stopChangeNotify() => _notifyManager.stopHandleNotify();
+  static void startChangeNotify() {
+    _notifyManager.startHandleNotify();
+    notifyingOfChange = true;
+  }
 
-  static Future<File> _getFileWithId(String id, {bool isOrigin = false}) async {
+  /// see [_NotifyManager]
+  static void stopChangeNotify() {
+    _notifyManager.stopHandleNotify();
+    notifyingOfChange = false;
+  }
+
+  static Future<File?> _getFileWithId(
+    String id, {
+    bool isOrigin = false,
+    PMProgressHandler? progressHandler,
+  }) async {
     if (Platform.isIOS || Platform.isMacOS || Platform.isAndroid) {
-      final path = await _plugin.getFullFile(id, isOrigin: isOrigin);
+      final path = await _plugin.getFullFile(
+        id,
+        isOrigin: isOrigin,
+        progressHandler: progressHandler,
+      );
       if (path == null) {
         return null;
       }
@@ -172,14 +219,19 @@ class PhotoManager {
     return null;
   }
 
-  static Future<Uint8List> _getFullDataWithId(String id) async {
+  static Future<Uint8List?> _getFullDataWithId(String id) async {
     return _plugin.getOriginBytes(id);
   }
 
-  static _getThumbDataWithOption(String id, ThumbOption option) {
+  static _getThumbDataWithOption(
+    String id,
+    ThumbOption option,
+    PMProgressHandler? progressHandler,
+  ) {
     return _plugin.getThumb(
       id: id,
       option: option,
+      progressHandler: progressHandler,
     );
   }
 
@@ -188,13 +240,10 @@ class PhotoManager {
   }
 
   /// [AssetPathEntity.refreshPathProperties]
-  static Future<AssetPathEntity> fetchPathProperties(
-    AssetPathEntity entity,
-    DateTimeCond dateTimeCond,
-  ) async {
-    assert(entity != null);
-    assert(dateTimeCond != null);
-    entity.filterOption.dateTimeCond = dateTimeCond;
+  static Future<AssetPathEntity?> fetchPathProperties({
+    required AssetPathEntity entity,
+    required FilterOptionGroup filterOptionGroup,
+  }) async {
     final result = await _plugin.fetchPathProperties(
       entity.id,
       entity.typeInt,
@@ -213,6 +262,10 @@ class PhotoManager {
     } else {
       return null;
     }
+  }
+
+  static Future<bool> _isLocallyAvailable(String id) {
+    return _plugin.isLocallyAvailable(id);
   }
 
   /// Only valid for Android 29. The API of API 28 must be used with the property of `requestLegacyExternalStorage`.
@@ -238,26 +291,32 @@ class PhotoManager {
     await _plugin.clearFileCache();
   }
 
-  /// When set to true, originbytes in Android Q will be cached as a file. When use again, the file will be read.
+  /// When set to true, origin bytes in Android Q will be cached as a file. When use again, the file will be read.
   static Future<bool> setCacheAtOriginBytes(bool cache) =>
       _plugin.cacheOriginBytes(cache);
 
-  static Future<Uint8List> _getOriginBytes(AssetEntity assetEntity) async {
+  static Future<Uint8List?> _getOriginBytes(
+    AssetEntity assetEntity, {
+    PMProgressHandler? progressHandler,
+  }) async {
     assert(Platform.isAndroid || Platform.isIOS || Platform.isMacOS);
     if (Platform.isAndroid) {
       if (await _isAndroidQ()) {
-        return _plugin.getOriginBytes(assetEntity.id);
+        return _plugin.getOriginBytes(
+          assetEntity.id,
+          progressHandler: progressHandler,
+        );
       } else {
-        return (await assetEntity.originFile).readAsBytes();
+        return (await assetEntity.originFile)?.readAsBytes();
       }
     } else if (Platform.isIOS || Platform.isMacOS) {
       final file = await assetEntity.originFile;
-      return file.readAsBytes();
+      return file?.readAsBytes();
     }
     return null;
   }
 
-  static Future<String> _getMediaUrl(AssetEntity assetEntity) {
+  static Future<String?> _getMediaUrl(AssetEntity assetEntity) {
     assert(Platform.isAndroid || Platform.isIOS || Platform.isMacOS);
     return _plugin.getMediaUrl(assetEntity);
   }
@@ -269,10 +328,8 @@ class PhotoManager {
   }
 
   /// Refresh the property of asset.
-  static Future<AssetEntity> refreshAssetProperties(AssetEntity src) async {
-    assert(src.id != null);
-    final Map<dynamic, dynamic> map =
-        await _plugin.getPropertiesFromAssetEntity(src.id);
+  static Future<AssetEntity?> refreshAssetProperties(String id) async {
+    final Map? map = await _plugin.getPropertiesFromAssetEntity(id);
 
     final asset = ConvertUtils.convertToAsset(map);
 
@@ -280,18 +337,6 @@ class PhotoManager {
       return null;
     }
 
-    src
-      ..id = asset.id
-      ..createDtSecond = asset.createDtSecond
-      ..width = asset.width
-      ..height = asset.height
-      ..duration = asset.duration
-      ..modifiedDateSecond = asset.modifiedDateSecond
-      ..typeInt = asset.typeInt
-      ..longitude = asset.longitude
-      ..latitude = asset.latitude
-      ..title = asset.title;
-
-    return src;
+    return asset;
   }
 }

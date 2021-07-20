@@ -6,21 +6,26 @@ import 'package:flutter/material.dart';
 import 'package:image_scanner_example/develop/upload_to_dev_serve.dart';
 import 'package:image_scanner_example/model/photo_provider.dart';
 import 'package:image_scanner_example/page/detail_page.dart';
+import 'package:image_scanner_example/util/common_util.dart';
 import 'package:image_scanner_example/widget/change_notifier_builder.dart';
 import 'package:image_scanner_example/widget/dialog/list_dialog.dart';
 import 'package:image_scanner_example/widget/image_item_widget.dart';
 import 'package:image_scanner_example/widget/loading_widget.dart';
-import 'package:oktoast/oktoast.dart';
+
 import 'package:photo_manager/photo_manager.dart';
 import 'package:provider/provider.dart';
 
 import 'copy_to_another_gallery_example.dart';
 import 'move_to_another_gallery_example.dart';
+import 'dart:ui' as ui;
 
 class GalleryContentListPage extends StatefulWidget {
-  final AssetPathEntity path;
+  const GalleryContentListPage({
+    Key? key,
+    required this.path,
+  }) : super(key: key);
 
-  const GalleryContentListPage({Key key, this.path}) : super(key: key);
+  final AssetPathEntity path;
 
   @override
   _GalleryContentListPageState createState() => _GalleryContentListPageState();
@@ -32,7 +37,7 @@ class _GalleryContentListPageState extends State<GalleryContentListPage> {
   PhotoProvider get photoProvider => Provider.of<PhotoProvider>(context);
 
   AssetPathProvider get provider =>
-      Provider.of<PhotoProvider>(context).getOrCreatePathProvider(path);
+      context.read<PhotoProvider>().getOrCreatePathProvider(path);
 
   List<AssetEntity> checked = [];
 
@@ -41,6 +46,9 @@ class _GalleryContentListPageState extends State<GalleryContentListPage> {
     super.initState();
     path.getAssetListRange(start: 0, end: path.assetCount).then((value) {
       if (value.isEmpty) {
+        return;
+      }
+      if (mounted) {
         return;
       }
       PhotoCachingManager().requestCacheAssets(
@@ -81,21 +89,22 @@ class _GalleryContentListPageState extends State<GalleryContentListPage> {
                   provider.deleteSelectedAssets(checked);
                 },
               ),
-              ChangeNotifierBuilder(
-                builder: (context, provider) {
-                  final formatType = provider.thumbFormat == ThumbFormat.jpeg
-                      ? ThumbFormat.png
-                      : ThumbFormat.jpeg;
+              AnimatedBuilder(
+                animation: photoProvider,
+                builder: (_, __) {
+                  final formatType =
+                      photoProvider.thumbFormat == ThumbFormat.jpeg
+                          ? ThumbFormat.png
+                          : ThumbFormat.jpeg;
                   return IconButton(
                     icon: Icon(Icons.swap_horiz),
                     iconSize: 22,
                     tooltip: "Use another format.",
                     onPressed: () {
-                      provider.thumbFormat = formatType;
+                      photoProvider.thumbFormat = formatType;
                     },
                   );
                 },
-                value: photoProvider,
               ),
               Tooltip(
                 child: Padding(
@@ -154,7 +163,7 @@ class _GalleryContentListPageState extends State<GalleryContentListPage> {
     if (entity.type != AssetType.image) {
       previewOriginBytesWidget = Container();
     } else {
-      previewOriginBytesWidget = RaisedButton(
+      previewOriginBytesWidget = ElevatedButton(
         child: Text("Show origin bytes image in dialog"),
         onPressed: () => showOriginBytes(entity),
       );
@@ -167,28 +176,57 @@ class _GalleryContentListPageState extends State<GalleryContentListPage> {
           builder: (_) => ListDialog(
             children: <Widget>[
               previewOriginBytesWidget,
-              RaisedButton(
+              ElevatedButton(
+                child: Text("isLocallyAvailable"),
+                onPressed: () => entity.isLocallyAvailable.then(
+                  (bool r) => print('isLocallyAvailable: $r'),
+                ),
+              ),
+              ElevatedButton(
+                child: Text("getMediaUrl"),
+                onPressed: () async {
+                  Stopwatch watch = Stopwatch()..start();
+                  final String? url = await entity.getMediaUrl();
+                  watch.stop();
+                  print('Media URL: $url');
+                  print(watch.elapsed);
+                },
+              ),
+              ElevatedButton(
                 child: Text("Show detail page"),
                 onPressed: () => routeToDetailPage(entity),
               ),
-              RaisedButton(
+              ElevatedButton(
+                child: Text("Show info dialog"),
+                onPressed: () => CommonUtil.showInfoDialog(context, entity),
+              ),
+              ElevatedButton(
                 child: Text("show 500 size thumb "),
                 onPressed: () => showThumb(entity, 500),
               ),
-              RaisedButton(
+              ElevatedButton(
                 child: Text("Delete item"),
                 onPressed: () => _deleteCurrent(entity),
               ),
-              RaisedButton(
+              ElevatedButton(
                 child: Text("Upload to my test server."),
-                onPressed: () => UploadToDevServer().upload(entity),
+                onPressed: () => UploadToDevServer.upload(entity),
               ),
-              RaisedButton(
+              ElevatedButton(
                 child: Text("Copy to another path"),
                 onPressed: () => copyToAnotherPath(entity),
               ),
               _buildMoveAnotherPath(entity),
               _buildRemoveInAlbumWidget(entity),
+              ElevatedButton(
+                child: Text("Test progress"),
+                onPressed: () => testProgressHandler(entity),
+              ),
+              ElevatedButton(
+                child: Text("Test thumb size"),
+                onPressed: () =>
+                    testThumbSize(entity, [500, 600, 700, 1000, 1500, 2000]),
+              ),
             ],
           ),
         );
@@ -261,7 +299,7 @@ class _GalleryContentListPageState extends State<GalleryContentListPage> {
       final dialog = AlertDialog(
         title: Text("Delete the asset"),
         actions: <Widget>[
-          FlatButton(
+          TextButton(
             child: Text(
               "delete",
               style: const TextStyle(color: Colors.red),
@@ -271,7 +309,7 @@ class _GalleryContentListPageState extends State<GalleryContentListPage> {
               Navigator.pop(context);
             },
           ),
-          FlatButton(
+          TextButton(
             child: Text("cancel"),
             onPressed: () => Navigator.pop(context),
           ),
@@ -284,27 +322,24 @@ class _GalleryContentListPageState extends State<GalleryContentListPage> {
   }
 
   Future<void> showOriginBytes(AssetEntity entity) async {
-    var title = entity.title;
-    if (entity.title == null || entity.title.isEmpty) {
+    final String title;
+    if (entity.title?.isEmpty != false) {
       title = await entity.titleAsync;
+    } else {
+      title = entity.title!;
     }
     print("entity.title = $title");
-    if (title.toLowerCase().endsWith(".heic")) {
-      showToast(
-          "Heic no support by Flutter. Try to use entity.thumbDataWithSize to get thumb.");
-      return;
-    }
     showDialog(
         context: context,
         builder: (_) {
-          return FutureBuilder<Uint8List>(
+          return FutureBuilder<Uint8List?>(
             future: entity.originBytes,
             builder: (BuildContext context, snapshot) {
               Widget w;
               if (snapshot.hasError) {
-                return ErrorWidget(snapshot.error);
+                return ErrorWidget(snapshot.error!);
               } else if (snapshot.hasData) {
-                w = Image.memory(snapshot.data);
+                w = Image.memory(snapshot.data!);
               } else {
                 w = Center(
                   child: Container(
@@ -327,9 +362,7 @@ class _GalleryContentListPageState extends State<GalleryContentListPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CopyToAnotherGalleryPage(
-          assetEntity: entity,
-        ),
+        builder: (_) => CopyToAnotherGalleryPage(assetEntity: entity),
       ),
     );
   }
@@ -339,7 +372,7 @@ class _GalleryContentListPageState extends State<GalleryContentListPage> {
       return Container();
     }
 
-    return RaisedButton(
+    return ElevatedButton(
       child: Text("Remove in album"),
       onPressed: () => deleteAssetInAlbum(entity),
     );
@@ -353,57 +386,111 @@ class _GalleryContentListPageState extends State<GalleryContentListPage> {
     if (!Platform.isAndroid) {
       return Container();
     }
-    return RaisedButton(
+    return ElevatedButton(
       onPressed: () {
-        Navigator.push(context,
-            MaterialPageRoute(builder: (BuildContext context) {
-          return MoveToAnotherExample(entity: entity);
-        }));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (BuildContext context) {
+            return MoveToAnotherExample(entity: entity);
+          }),
+        );
       },
       child: Text("Move to another gallery."),
     );
   }
 
   showThumb(AssetEntity entity, int size) async {
-    var title = entity.title;
-    if (entity.title == null || entity.title.isEmpty) {
+    final String title;
+    if (entity.title?.isEmpty != false) {
       title = await entity.titleAsync;
+    } else {
+      title = entity.title!;
     }
     print("entity.title = $title");
     showDialog(
-        context: context,
-        builder: (_) {
-          return FutureBuilder<Uint8List>(
-            future: entity.thumbDataWithOption(
-              ThumbOption.ios(
-                width: 500,
-                height: 500,
-                deliveryMode: DeliveryMode.opportunistic,
-                resizeMode: ResizeMode.fast,
-                resizeContentMode: ResizeContentMode.fill,
-              ),
+      context: context,
+      builder: (_) {
+        return FutureBuilder<Uint8List?>(
+          future: entity.thumbDataWithOption(
+            ThumbOption.ios(
+              width: 500,
+              height: 500,
+              deliveryMode: DeliveryMode.opportunistic,
+              resizeMode: ResizeMode.fast,
+              resizeContentMode: ResizeContentMode.fit,
+              // resizeContentMode: ResizeContentMode.fill,
             ),
-            builder: (BuildContext context, snapshot) {
-              Widget w;
-              if (snapshot.hasError) {
-                return ErrorWidget(snapshot.error);
-              } else if (snapshot.hasData) {
-                w = Image.memory(snapshot.data);
-              } else {
-                w = Center(
-                  child: Container(
-                    color: Colors.white,
-                    padding: const EdgeInsets.all(20),
-                    child: CircularProgressIndicator(),
-                  ),
-                );
-              }
-              return GestureDetector(
-                child: w,
-                onTap: () => Navigator.pop(context),
+          ),
+          builder: (BuildContext context, snapshot) {
+            Widget w;
+            if (snapshot.hasError) {
+              return ErrorWidget(snapshot.error!);
+            } else if (snapshot.hasData) {
+              final data = snapshot.data!;
+              ui.decodeImageFromList(data, (result) {
+                print('result size: ${result.width}x${result.height}');
+                // for 4288x2848
+              });
+              w = Image.memory(data);
+            } else {
+              w = Center(
+                child: Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(20),
+                  child: CircularProgressIndicator(),
+                ),
               );
-            },
-          );
-        });
+            }
+            return GestureDetector(
+              child: w,
+              onTap: () => Navigator.pop(context),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> testProgressHandler(AssetEntity entity) async {
+    final progressHandler = PMProgressHandler();
+    progressHandler.stream.listen((event) {
+      final progress = event.progress;
+      print('progress state onChange: ${event.state}, progress: $progress');
+    });
+    // final file = await entity.loadFile(progressHandler: progressHandler);
+    // print('file = $file');
+
+    // final thumb = await entity.thumbDataWithSize(
+    //   300,
+    //   300,
+    //   progressHandler: progressHandler,
+    // );
+
+    // print('thumb length = ${thumb.length}');
+
+    final file = await entity.loadFile(
+      progressHandler: progressHandler,
+      isOrigin: true,
+    );
+    print('file = $file');
+  }
+
+  testThumbSize(AssetEntity entity, List<int> list) async {
+    for (final size in list) {
+      // final data = await entity.thumbDataWithOption(ThumbOption.ios(
+      //   width: size,
+      //   height: size,
+      //   resizeMode: ResizeMode.exact,
+      // ));
+      final data = await entity.thumbDataWithSize(size, size);
+
+      if (data == null) {
+        return;
+      }
+      ui.decodeImageFromList(data, (result) {
+        print(
+            'size:$size length:${data.length}, size: ${result.width}x${result.height}');
+      });
+    }
   }
 }

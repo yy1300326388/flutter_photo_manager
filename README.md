@@ -1,21 +1,21 @@
 # photo_manager
 
-[![pub package](https://img.shields.io/pub/v/photo_manager.svg)](https://pub.dartlang.org/packages/photo_manager)
+[![pub package](https://img.shields.io/pub/v/photo_manager.svg)](https://pub.dev/packages/photo_manager)
 [![GitHub](https://img.shields.io/github/license/Caijinglong/flutter_photo_manager.svg)](https://github.com/Caijinglong/flutter_photo_manager)
 [![GitHub stars](https://img.shields.io/github/stars/Caijinglong/flutter_photo_manager.svg?style=social&label=Stars)](https://github.com/Caijinglong/flutter_photo_manager)
 
-A flutter api for photo, you can get image/video from ios or android.
+Photo/Assets management APIs for Flutter without UI integration,
+you can get assets (image/video/audio) from Android, iOS and macOS.
 
-一个提供相册 api 的插件, android ios 可用,没有 ui,以便于自定义自己的界面, 你可以通过提供的 api 来制作图片相关的 ui 或插件
+提供相册操作 API 的插件，Android、iOS 和 macOS 可用。
+没有 UI 内容，以便于自定义自己的界面，你可以通过提供的 API 来实现图片相关的 UI 或插件。
 
-## Other projects using this library
-
-If you just need a picture selector, you can choose to use [photo](https://pub.dartlang.org/packages/photo) library , a multi image picker. All UI create by flutter.
+## Projects that using this packages
 
 | name                 | owner          | description                                                                                                                                       | pub                                                                                                                    | github                                                                                                                                                                  |
 | :------------------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ | :--------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| photo                | Caijinglong    | A selector for multiple pictures / videos, The style is like the 6.0 version of wechat.                                                           | [![pub package](https://img.shields.io/pub/v/photo.svg)](https://pub.dev/packages/photo)                               | [![star](https://img.shields.io/github/stars/Caijinglong/flutter_photo?style=social)](https://github.com/fluttercandies/flutter_wechat_assets_picker)                   |
-| wechat_assets_picker | fluttercandies | An assets picker in WeChat 7.x style, support multi assets picking.                                                                               | [![pub package](https://img.shields.io/pub/v/wechat_assets_picker.svg)](https://pub.dev/packages/wechat_assets_picker) | [![star](https://img.shields.io/github/stars/fluttercandies/flutter_wechat_assets_picker?style=social)](https://github.com/fluttercandies/flutter_wechat_assets_picker) |
+| wechat_assets_picker | fluttercandies | An audio/video/image picker in pure Dart which is the same with WeChat, support multi picking.                                                    | [![pub package](https://img.shields.io/pub/v/wechat_assets_picker.svg)](https://pub.dev/packages/wechat_assets_picker) | [![star](https://img.shields.io/github/stars/fluttercandies/flutter_wechat_assets_picker?style=social)](https://github.com/fluttercandies/flutter_wechat_assets_picker) |
+| photo                | Caijinglong    | A selector for multiple pictures / videos, The style is like the 6.0 version of wechat.                                                           | [![pub package](https://img.shields.io/pub/v/photo.svg)](https://pub.dev/packages/photo)                               | [![star](https://img.shields.io/github/stars/Caijinglong/flutter_photo?style=social)](https://github.com/caijinglong/flutter_photo)                                     |
 | photo_widget         | fluttercandies | Not just selectors, but to provide each widget as a separate component, which is convenient for quickly combining and customizing your own style. | [![pub package](https://img.shields.io/pub/v/photo_widget.svg)](https://pub.dev/packages/photo_widget)                 | [![star](https://img.shields.io/github/stars/fluttercandies/photo_widget?style=social)](https://github.com/fluttercandies/photo_widget)                                 |
 
 ## Table of contents
@@ -27,7 +27,10 @@ If you just need a picture selector, you can choose to use [photo](https://pub.d
     - [Add to pubspec](#add-to-pubspec)
     - [import in dart code](#import-in-dart-code)
   - [Usage](#usage)
+    - [Configure your flutter project to use the plugin](#configure-your-flutter-project-to-use-the-plugin)
     - [request permission](#request-permission)
+      - [About `requestPermissionExtend`](#about-requestpermissionextend)
+      - [Limit photos](#limit-photos)
     - [you get all of asset list (gallery)](#you-get-all-of-asset-list-gallery)
       - [FilterOption](#filteroption)
     - [Get asset list from `AssetPathEntity`](#get-asset-list-from-assetpathentity)
@@ -57,9 +60,11 @@ If you just need a picture selector, you can choose to use [photo](https://pub.d
     - [Android Q (android10 , API 29)](#android-q-android10--api-29)
     - [Android R (android 11, API30)](#android-r-android-11-api30)
     - [glide](#glide)
+    - [Remove Media Location permission](#remove-media-location-permission)
   - [common issues](#common-issues)
     - [ios build error](#ios-build-error)
   - [Some articles about to use this library](#some-articles-about-to-use-this-library)
+  - [Migration Guide](#migration-guide)
 
 ## install
 
@@ -80,19 +85,45 @@ import 'package:photo_manager/photo_manager.dart';
 
 ## Usage
 
+### Configure your flutter project to use the plugin
+
+Before using the plug-in, there are several points to note.
+Please click the link below.
+
+1. [Android](#android-config)
+2. [iOS](#ios-config)
+
 ### request permission
 
 You must get the user's permission on android/ios.
 
 ```dart
-var result = await PhotoManager.requestPermission();
-if (result) {
+var result = await PhotoManager.requestPermissionExtend();
+if (result.isAuth) {
     // success
 } else {
     // fail
     /// if result is fail, you can call `PhotoManager.openSetting();`  to open android/ios applicaton's setting to get permission
 }
 ```
+
+#### About `requestPermissionExtend`
+
+In iOS14, Apple inclue "LimitedPhotos Library" to iOS.
+
+We need use the `PhotoManager.requestPermissionExtend()` to request permission.
+
+The method will return `PermissionState`. See it in [document of Apple](https://developer.apple.com/documentation/photokit/phauthorizationstatus?language=objc).
+
+So, because of compatibility, Android also recommends using this method to request permission, use `state.isAuth`, use a to be equivalent to the previous method `requestPermission`.
+
+#### Limit photos
+
+Because apple inclue "LimitedPhotos Library" to iOS.
+
+Let the user select the visible image for app again, we can use `PhotoManager.presentLimited()` to repick again.
+
+The method is only valid when iOS14 and user authorization mode is `PermissionState.limited`, other platform will ignore.
 
 ### you get all of asset list (gallery)
 
@@ -104,7 +135,7 @@ List<AssetPathEntity> list = await PhotoManager.getAssetPathList();
 | ------------ | ---------------------------------- |
 | hasAll       | Is there an album containing "all" |
 | type         | image/video/all , default all.     |
-| filterOption | See FilterOption.                  |
+| filterOption | See [FilterOption](#FilterOption). |
 
 #### FilterOption
 
@@ -113,9 +144,13 @@ List<AssetPathEntity> list = await PhotoManager.getAssetPathList();
 | needTitle          | The title attribute of the picture must be included in android (even if it is false), it is more performance-consuming in iOS, please consider whether you need it. The default is false. |
 | sizeConstraint     | Constraints on resource size.                                                                                                                                                             |
 | durationConstraint | Constraints of time, pictures will ignore this constraint.                                                                                                                                |
-| dateTimeCond       | Includes date filtering and date sorting                                                                                                                                                  |
+| createDateTimeCond | Create date filter                                                                                                                                                                        |
+| updateDateTimeCond | Update date filter                                                                                                                                                                        |
+| orders             | The sort option, use `addOrderOption`.                                                                                                                                                    |
 
-Example see [filter_option_page.dart](https://github.com/CaiJingLong/flutter_photo_manager/example/lib/page/filter_option_page.dart).
+Example see [filter_option_page.dart](https://github.com/CaiJingLong/flutter_photo_manager/blob/master/example/lib/page/filter_option_page.dart).
+
+Most classes of FilterOption support `copyWith`.
 
 ### Get asset list from `AssetPathEntity`
 
@@ -265,19 +300,13 @@ PhotoCachingManager().requestCacheAssets(
 );
 ```
 
-
-
 And, if you want to stop, call `PhotoCachingManager().cancelCacheRequest();`
 
-
-
 Usually, when we preview an album, we use thumbnails.
-In flutter, becauseListView.builder,GridView.builderIt's all rendering that loads, but sometimes we might want to pre-load some pictures in advance to make them display faster.
+In flutter, because `ListView.builder` and `GridView.builder` rendering that loads, but sometimes we might want to pre-load some pictures in advance to make them display faster.
 
-Now, I try to create a caching image manager (just like [PHCachingImageManager](https://developer.apple.com/documentation/photokit/phcachingimagemanager?language=objc)) to do it.  In IOS, I use the system API directly, and Android will use glide and use glide's file cache to complete this step
+Now, I try to create a caching image manager (just like [PHCachingImageManager](https://developer.apple.com/documentation/photokit/phcachingimagemanager?language=objc)) to do it. In IOS, I use the system API directly, and Android will use glide and use glide's file cache to complete this step.
 This function is completely optional.
-
-
 
 #### Delete item
 
@@ -484,6 +513,21 @@ rootProject.allprojects {
 
 And, if you want to use ProGuard, you can see the [ProGuard of Glide](https://github.com/bumptech/glide#proguard).
 
+### Remove Media Location permission
+
+Android contains [ACCESS_MEDIA_LOCATION](https://developer.android.com/training/data-storage/shared/media#media-location-permission) permission by default.
+
+This permission is introduced in Android Q. If your app doesn't need this permission, you need to add the following node to the Android manifest in your app.
+
+```xml
+<uses-permission
+  android:name="android.permission.ACCESS_MEDIA_LOCATION"
+  tools:node="remove"
+  />
+```
+
+See code in the [example](https://github.com/CaiJingLong/flutter_photo_manager/blob/e083c7d5f4eb5f5b355a75357c0a0c3e2d534b2e/example/android/app/src/main/AndroidManifest.xml#L11-L14).
+
 ## common issues
 
 ### ios build error
@@ -516,3 +560,7 @@ Xcode's output:
 [Flutter 开发日记-如何实现一个照片选择器 plugin](https://juejin.im/post/5df797706fb9a016107974fc)
 
 If you have other articles about this library, you can contact me or open PR here.
+
+## Migration Guide
+
+See [Migration-Guide](./Migration-Guide.md)
